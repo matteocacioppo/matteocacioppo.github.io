@@ -1,10 +1,55 @@
 <!DOCTYPE html>
-<canvas id="canvas"></canvas>
-<link rel="stylesheet" href="style.css" />
-<p style="font-size: 20px; color:#1F9AFE;">
-<a href="sheet.html">Sheet music</a>
-</p>
-<div class="hidden">
-</div>
-<script src="script.js"></script>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bethany Jones</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <!-- tua sezione canvas -->
+  <canvas id="canvas"></canvas>
+  <p style="font-size: 20px; color:#1F9AFE;">
+    <a href="sheet.html">Sheet music</a>
+  </p>
+
+  <!-- sezione tipo Bethany Jones -->
+  <header>
+    <nav>
+      <ul>
+        <li><a href="#">Bio</a></li>
+        <li><a href="#">Portfolio</a></li>
+        <li><a href="#">Podcast</a></li>
+        <li><a href="#">Blog</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="text">
+        <h1>Bethany Jones</h1>
+        <p>I'm a dedicated culture critic and blogger located in San Francisco, California.</p>
+        <p class="handle">@reallygreatsite</p>
+        <div class="social-icons">
+          <a href="#"><i class="fab fa-instagram"></i></a>
+          <a href="#"><i class="fab fa-facebook"></i></a>
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-linkedin"></i></a>
+        </div>
+      </div>
+      <div class="image">
+        <img src="bethany.jpg" alt="Bethany Jones holding ice cream">
+      </div>
+    </section>
+  </main>
+
+  <div class="hidden"></div>
+  <script src="script.js"></script>
+</body>
 </html>
