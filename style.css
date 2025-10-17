@@ -1,81 +1,57 @@
-body {
-  font-family: 'Raleway', sans-serif;
-  background-color: #f3ece6;
-  margin: 0;
-  padding: 0;
-  color: #222;
+/* Reset base */
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { font-family: 'Raleway', sans-serif; color: #222; }
+
+/* Canvas dietro */
+#canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none; /* il canvas non blocca i click */
 }
 
-header {
-  text-align: center;
-  padding: 20px 0;
-}
+/* Contenuto sopra */
+.site { position: relative; z-index: 1; }
 
-nav ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-}
+/* Barra in alto */
+.topnav { padding: 24px 0; display: flex; justify-content: center; }
+.topnav nav { display: flex; gap: 48px; }
+.topnav a { text-decoration: none; color: #000; font-weight: 700; letter-spacing: .5px; }
 
-nav a {
-  text-decoration: none;
-  color: #000;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-
+/* Card centrale */
+main { display: flex; justify-content: center; }
 .card {
   display: flex;
-  justify-content: space-between;
+  gap: 32px;
   align-items: center;
-  max-width: 1000px;
-  margin: 40px auto;
-  background-color: #f3ece6;
+  max-width: 1100px;
+  width: 92%;
   border: 1px solid #bdb6ae;
-  padding: 40px;
+  background: #f3ece6;
+  padding: 48px;
+  margin: 24px 0 64px;
 }
+.text { flex: 1; }
+.text h1 { font-size: 56px; margin: 0 0 16px; }
+.text p { font-size: 20px; line-height: 1.45; margin: 0 0 10px; }
+.handle { font-weight: 700; margin-top: 20px; }
 
-.text {
-  flex: 1;
-  margin-right: 30px;
-}
+.social { display: flex; gap: 16px; margin-top: 16px; }
+.social a { color: #000; text-decoration: none; font-weight: 700; }
 
-.text h1 {
-  font-size: 48px;
-  margin-bottom: 20px;
-}
+.sheet a { color: #1F9AFE; text-decoration: none; font-size: 20px; }
 
-.text p {
-  font-size: 20px;
-  line-height: 1.5;
-  margin-bottom: 10px;
-}
-
-.handle {
-  font-weight: 700;
-  margin-top: 20px;
-}
-
-.social-icons {
-  margin-top: 20px;
-}
-
-.social-icons a {
-  color: #000;
-  font-size: 24px;
-  margin-right: 20px;
-  transition: 0.3s;
-}
-
-.social-icons a:hover {
-  color: #555;
-}
-
+/* Immagine */
 .image img {
-  width: 400px;
+  width: 420px;
+  max-width: 40vw;
   height: auto;
   border: 1px solid #bdb6ae;
+}
+
+/* Mobile */
+@media (max-width: 860px) {
+  .card { flex-direction: column; text-align: left; }
+  .image img { width: 100%; max-width: 100%; }
 }
