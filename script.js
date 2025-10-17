@@ -56,7 +56,7 @@ const positions = [
   [675, 424], [775, 424], [875, 424],
 ];
 const labels = ["C", "D", "E", "F", "G", "A", "B"];
-const sounds = ["C_note.mp3","D_note.mp3","E_note.mp3","F_note.mp3","G_note.mp3","A_note.mp3","B_note.mp3"];
+const sounds = ["/mp3/C_note.mp3","/mp3/D_note.mp3","/mp3/E_note.mp3","/mp3/F_note.mp3","/mp3/G_note.mp3","/mp3/A_note.mp3","/mp3/B_note.mp3"];
 
 const buttons = positions.map(([x, y], idx) => {
   const btn = document.createElement("button");
@@ -90,4 +90,6 @@ buttons.forEach((btn) => {
       }
     }
   });
+
 });
+
