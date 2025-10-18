@@ -4,7 +4,7 @@ const image = document.getElementById("source");
 
 const k_x = 110;
 const r = 20;
-const coordinates = [331, 330, 305, 280, 255, 232, 207];
+const coordinates = [349, 350, 305, 280, 255, 232, 205];
 
 let random_arr = [];
 let i = 0;
@@ -23,7 +23,7 @@ function drawCircle(x, y, radius) {
   ctx.fillStyle = "black";
   ctx.fill();
 
-  if (y === 331) {
+  if (y === coordinates[0]) {
     ctx.beginPath();
     const L = radius * 1.5;
     ctx.moveTo(x - L, y);
@@ -52,8 +52,8 @@ image.addEventListener("load", () => {
 });
 
 const positions = [
-  [275, 424], [375, 424], [475, 424], [575, 424],
-  [675, 424], [775, 424], [875, 424],
+  [475, 554], [575, 554], [675, 554], [775, 554],
+  [875, 554], [975, 554], [1075, 554],
 ];
 const labels = ["C", "D", "E", "F", "G", "A", "B"];
 const sounds = ["/mp3/C_note.mp3","/mp3/D_note.mp3","/mp3/E_note.mp3","/mp3/F_note.mp3","/mp3/G_note.mp3","/mp3/A_note.mp3","/mp3/B_note.mp3"];
@@ -74,11 +74,11 @@ const buttons = positions.map(([x, y], idx) => {
 buttons.forEach((btn) => {
   btn.addEventListener("click", () => {
     if (Number(btn.dataset.idx) === random_arr[i]) {
-      const sound = new Audio(sounds[i]);
+      const sound = new Audio(sounds[coordinates.indexOf(random_arr[i])]);
       sound.currentTime = 0;
       sound.play().catch(console.error);
 
-      console.log(`idx: ${btn.dataset.idx} | random_arr: [${random_arr.join(", ")}]`);
+      console.log(`idx: ${btn.dataset.idx} | random_arr: [${random_arr.join(", ")}] | sound: ${sounds[i]}`);
       i++;
 
       if (i >= random_arr.length) {

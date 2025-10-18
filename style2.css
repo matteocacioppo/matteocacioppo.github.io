@@ -1,0 +1,30 @@
+.hidden {
+  display: none;
+}
+
+body {
+  background-color: #f7f3ef;
+  margin: 0;
+  text-align: center;
+}
+
+header {
+  position: relative;
+  z-index: 10;
+  padding: 10px;
+}
+
+.logo img {
+  height: 60px;
+  width: auto;
+}
+
+main {
+  margin-top: 20px;
+}
+
+#canvas {
+  display: block;
+  margin: 0 auto;
+  z-index: 0;
+}

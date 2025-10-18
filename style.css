@@ -1,3 +1,154 @@
-.hidden {
-  display: none;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #f7f3ef;
+  color: #333;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 2rem 4rem;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+}
+
+nav a {
+  position: relative;
+  text-decoration: none;
+  color: #333;
+  font-weight: 400;
+  font-size: 1.2rem;
+}
+
+nav a::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background-color: #c97a45;
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+nav a:hover::after {
+  width: 100%;
+}
+
+.intro {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6rem;
+}
+
+.text {
+  flex: 1;
+  max-width: 500px;
+  font-size: 1.5rem;
+}
+
+h1 {
+  font-size: 3.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+p {
+  line-height: 1.8;
+  font-weight: 300;
+  margin-bottom: 2rem;
+}
+
+strong {
+  font-weight: 600;
+}
+
+.buttons {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.btn {
+  padding: 0.7rem 1.5rem;
+  border: 1px solid #333;
+  text-decoration: none;
+  color: #333;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.btn.primary {
+  background-color: #444;
+  color: #fff;
+  border: none;
+}
+
+.socials {
+  display: flex;
+  gap: 1rem;
+  font-size: 2rem;
+}
+
+.socials a {
+  color: #333;
+  transition: color 0.3s ease;
+}
+
+.socials a:hover {
+  color: #c97a45;
+}
+
+.image img {
+  width: 100%;
+  max-width: 450px;
+  height: auto;
+}
+
+.bottom-icons {
+  position: fixed;
+  bottom: 15px;
+  left: 25px;
+  display: flex;
+  gap: 15px;
+  font-size: 1.5rem;
+}
+
+.bottom-icons a {
+  color: #333;
+  transition: color 0.3s ease;
+}
+
+.bottom-icons a:hover {
+  color: #3b82f6;
+}
+
+@media (max-width: 900px) {
+  .intro {
+    flex-direction: column;
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .image img {
+    width: 300px;
+    margin-top: 2rem;
+  }
 }
