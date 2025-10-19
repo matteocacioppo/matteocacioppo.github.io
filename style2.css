@@ -1,3 +1,5 @@
+
+
 .hidden {
   display: none;
 }
@@ -8,11 +10,47 @@ body {
   text-align: center;
 }
 
-header {
-  position: relative;
-  z-index: 10;
-  padding: 10px;
+.home-link {
+  text-decoration: none;
+  color: black;
+  font-size: 1.2rem;
+  font-weight: bold;
 }
+
+header {
+  position: absolute;
+  top: 20px;
+  left: 40px;
+  z-index: 10;
+}
+
+/* stile identico ai link CV/Music Sheet */
+.nav-link {
+  position: relative;
+  text-decoration: none;
+  color: #333;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: 1.3rem;
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background-color: #c97a45;
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+
 
 .logo img {
   height: 60px;
