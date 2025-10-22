@@ -4,14 +4,18 @@ const image = document.getElementById("source");
 
 const k_x = 110;
 const r = 20;
-const coordinates = [349, 350, 305, 280, 255, 232, 205];
+
+const coordinates = [349, 350, 305, 280, 255, 232, 205, 183, 158, 134, 110, 80];
 
 let random_arr = [];
 let i = 0;
 
+const notesPerOctave = 7;
+const circlesPerRound = 6;
+
 function generateRandomPositions() {
   random_arr = [];
-  for (let j = 0; j < 6; j++) {
+  for (let j = 0; j < circlesPerRound; j++) {
     const y = coordinates[Math.floor(Math.random() * coordinates.length)];
     random_arr.push(y);
   }
@@ -51,12 +55,17 @@ image.addEventListener("load", () => {
   drawCircles(0);
 });
 
+// 7 tasti fissi
 const positions = [
-  [475, 554], [575, 554], [675, 554], [775, 554],
-  [875, 554], [975, 554], [1075, 554],
+  [475, 554], [575, 554], [675, 554],
+  [775, 554], [875, 554], [975, 554],
+  [1075, 554],
 ];
 const labels = ["C", "D", "E", "F", "G", "A", "B"];
-const sounds = ["/mp3/C_note.mp3","/mp3/D_note.mp3","/mp3/E_note.mp3","/mp3/F_note.mp3","/mp3/G_note.mp3","/mp3/A_note.mp3","/mp3/B_note.mp3"];
+const sounds = [
+  "/mp3/C_note.mp3","/mp3/D_note.mp3","/mp3/E_note.mp3",
+  "/mp3/F_note.mp3","/mp3/G_note.mp3","/mp3/A_note.mp3","/mp3/B_note.mp3"
+];
 
 const buttons = positions.map(([x, y], idx) => {
   const btn = document.createElement("button");
@@ -73,14 +82,20 @@ const buttons = positions.map(([x, y], idx) => {
 
 buttons.forEach((btn) => {
   btn.addEventListener("click", () => {
-    if (Number(btn.dataset.idx) === random_arr[i]) {
-      const sound = new Audio(sounds[coordinates.indexOf(random_arr[i])]);
+    const btnValue = Number(btn.dataset.idx);
+    const currentY = random_arr[i];
+    const noteIndex = coordinates.indexOf(currentY);
+    if (noteIndex === -1) return;
+
+    const baseIndex = noteIndex % notesPerOctave;
+    const expectedValue = coordinates[baseIndex];
+
+    if (btnValue === expectedValue) {
+      const sound = new Audio(sounds[baseIndex]);
       sound.currentTime = 0;
       sound.play().catch(console.error);
 
-      console.log(`idx: ${btn.dataset.idx} | random_arr: [${random_arr.join(", ")}] | sound: ${sounds[i]}`);
       i++;
-
       if (i >= random_arr.length) {
         i = 0;
         generateRandomPositions();
@@ -90,6 +105,4 @@ buttons.forEach((btn) => {
       }
     }
   });
-
 });
-
