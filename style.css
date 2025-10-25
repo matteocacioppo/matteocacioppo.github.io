@@ -204,7 +204,7 @@ strong {
 .cv-frame {
   width: 85%;
   max-width: 1500px;
-  height: 800px;
+  height: 750px;
   background: none;
   border: none;
   transform: scale(0.8) translateY(100px);
