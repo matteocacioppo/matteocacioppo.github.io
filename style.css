@@ -202,9 +202,9 @@ strong {
 
 /* Contenitore principale del CV (gestito dallo scroll) */
 .cv-frame {
-  width: 85%;
-  max-width: 1500px;
-  height: 725px;
+  width: 95%;
+  max-width: 2800px;
+  height: 90vh; /* dinamico in base alla finestra */
   background: none;
   border: none;
   transform: scale(0.8) translateY(100px);
@@ -214,6 +214,7 @@ strong {
   perspective: 1200px;
   transform-style: preserve-3d;
 }
+
 
 /* Contenitore interno per le due facce */
 .cv-inner {
@@ -225,7 +226,7 @@ strong {
 }
 
 /* Facce del CV */
-.cv-front, .cv-back {
+.cv-front{
   position: absolute;
   width: 100%;
   height: 100%;
@@ -233,19 +234,12 @@ strong {
   backface-visibility: hidden;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
   background: #fff;
-  color: #333;
+  color: #030202;
   padding: 3rem;
   box-sizing: border-box;
-}
-
-.cv-back {
-  transform: rotateY(180deg);
-  background: #f0f0f0;
-}
-
-/* Hover leggero (ombra) */
-.cv-frame.hover-boost {
-  box-shadow: 0 16px 32px rgba(0,0,0,0.22);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #635f5f #f7f3ef;
 }
 
 .cv-frame h2 {

@@ -1,23 +1,6 @@
 const cv = document.querySelector(".cv-frame");
 const arrow = document.querySelector(".down-arrow");
 
-let hovering = false; // stato hover
-
-// gestisco hover manualmente
-if (cv) {
-  cv.addEventListener("mouseenter", () => {
-    hovering = true;
-    cv.classList.add("hover-boost");
-    applyScrollTransform(); // aggiorna subito con lo zoom
-  });
-
-  cv.addEventListener("mouseleave", () => {
-    hovering = false;
-    cv.classList.remove("hover-boost");
-    applyScrollTransform(); // torna allo scale normale
-  });
-}
-
 window.addEventListener("scroll", () => {
   applyScrollTransform();
 });
@@ -41,11 +24,8 @@ function applyScrollTransform() {
   const blur = 10 * (1 - progress);              // 10px -> 0px
   const opacity = progress;                      // 0 -> 1
 
-  // zoom aggiuntivo se hover
-  const hoverScaleBoost = hovering ? 1.03 : 1.0;
-  const finalScale = baseScale * hoverScaleBoost;
-
-  cv.style.transform = `perspective(1000px) scale(${finalScale}) translateY(${translateY}px)`;
+  // applica la trasformazione
+  cv.style.transform = `perspective(1000px) scale(${baseScale}) translateY(${translateY}px)`;
   cv.style.filter = `blur(${blur}px)`;
   cv.style.opacity = String(opacity);
 }
