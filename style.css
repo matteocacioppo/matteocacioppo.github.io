@@ -56,7 +56,6 @@ nav a:hover::after {
   width: 100%;
 }
 
-
 .intro {
   flex: 1;
   display: flex;
@@ -171,6 +170,7 @@ strong {
   }
 }
 
+/* ===================== FRECCIA ===================== */
 .down-arrow {
   position: fixed;
   bottom: 40px;
@@ -181,6 +181,7 @@ strong {
   color: #333;
   animation: bounce 1.5s infinite ease-in-out;
   letter-spacing: -0.5rem;
+  transition: opacity 0.5s ease;
 }
 
 @keyframes bounce {
@@ -188,6 +189,7 @@ strong {
   50% { transform: translate(-50%, -20px); }
 }
 
+/* ===================== SEZIONE CV ===================== */
 .cv-section {
   height: 100vh;
   display: flex;
@@ -198,18 +200,52 @@ strong {
   position: relative;
 }
 
+/* Contenitore principale del CV (gestito dallo scroll) */
 .cv-frame {
-  width: 70%;
-  max-width: 800px;
-  background: #fff;
-  color: #333;
-  padding: 3rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  width: 85%;
+  max-width: 1500px;
+  height: 800px;
+  background: none;
+  border: none;
   transform: scale(0.8) translateY(100px);
   filter: blur(10px);
   opacity: 0;
   transition: none;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+/* Contenitore interno per le due facce */
+.cv-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  border-radius: 12px;
+}
+
+/* Facce del CV */
+.cv-front, .cv-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  backface-visibility: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  background: #fff;
+  color: #333;
+  padding: 3rem;
+  box-sizing: border-box;
+}
+
+.cv-back {
+  transform: rotateY(180deg);
+  background: #f0f0f0;
+}
+
+/* Hover leggero (ombra) */
+.cv-frame.hover-boost {
+  box-shadow: 0 16px 32px rgba(0,0,0,0.22);
 }
 
 .cv-frame h2 {
@@ -220,8 +256,4 @@ strong {
 .cv-frame h3 {
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
-}
-
-.down-arrow {
-  transition: opacity 0.5s ease;
 }
