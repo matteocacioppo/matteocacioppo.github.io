@@ -68,7 +68,7 @@ nav a:hover::after {
 .text {
   flex: 1;
   max-width: 500px;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
 }
 
 h1 {
