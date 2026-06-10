@@ -2,29 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Matteo Cacioppo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Note Recognition &middot; Matteo Cacioppo</title>
   <link rel="stylesheet" href="style2.css">
-  <link rel="icon" type="image/png" href="icon.png?">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="icon.png">
 </head>
 <body>
 
 <header>
-<a href="index.html" class="nav-link">Home</a>
+  <a href="index.html" class="nav-link">&#8592; Back</a>
+  <div class="header-center">
+    <span class="header-title">Note Recognition</span>
+  </div>
+  <div class="header-score">
+    Score: <span id="score">0</span>
+  </div>
 </header>
 
-  <main>
-    <canvas id="canvas"></canvas>
-  </main>
-
-  <div class="hidden">
-    <img
-      id="source"
-      src="depositphotos_426027152-stock-illustration-blank-music-staff-isolated-on-Photoroom.png"
-      width="1024"
-      height="410"
-      alt="music staff background">
+<main>
+  <div class="game-container">
+    <p class="game-hint">Identify the highlighted note on the staff</p>
+    <div class="canvas-wrapper">
+      <canvas id="canvas"></canvas>
+    </div>
+    <div id="keyboard" class="keyboard"></div>
   </div>
+</main>
 
-  <script src="script.js"></script>
+<div class="hidden">
+  <img
+    id="source"
+    src="depositphotos_426027152-stock-illustration-blank-music-staff-isolated-on-Photoroom.png"
+    width="1024"
+    height="410"
+    alt="music staff">
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const image = document.getElementById("source");
+const scoreEl = document.getElementById("score");
 
 const k_x = 110;
 const r = 20;
@@ -9,6 +10,7 @@ const coordinates = [349, 350, 305, 280, 255, 232, 205, 183, 158, 134, 110, 80];
 
 let random_arr = [];
 let i = 0;
+let score = 0;
 
 const notesPerOctave = 7;
 const circlesPerRound = 6;
@@ -21,19 +23,27 @@ function generateRandomPositions() {
   }
 }
 
-function drawCircle(x, y, radius) {
+function drawCircle(x, y, radius, isActive) {
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
-  ctx.fillStyle = "black";
+  ctx.fillStyle = isActive ? "#6366f1" : "#b0b8cc";
   ctx.fill();
+
+  if (isActive) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(99, 102, 241, 0.35)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
 
   if (y === coordinates[0]) {
     ctx.beginPath();
-    const L = radius * 1.5;
+    const L = radius * 1.6;
     ctx.moveTo(x - L, y);
     ctx.lineTo(x + L, y);
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = "black";
+    ctx.lineWidth = isActive ? 4 : 3;
+    ctx.strokeStyle = isActive ? "#6366f1" : "#b0b8cc";
     ctx.stroke();
   }
 }
@@ -44,7 +54,7 @@ function drawCircles(skipCount = 0) {
   for (let j = skipCount; j < random_arr.length; j++) {
     const y = random_arr[j];
     const x = k_x * j + 300;
-    drawCircle(x, y, r);
+    drawCircle(x, y, r, j === skipCount);
   }
 }
 
@@ -55,28 +65,20 @@ image.addEventListener("load", () => {
   drawCircles(0);
 });
 
-// 7 tasti fissi
-const positions = [
-  [475, 554], [575, 554], [675, 554],
-  [775, 554], [875, 554], [975, 554],
-  [1075, 554],
-];
 const labels = ["C", "D", "E", "F", "G", "A", "B"];
 const sounds = [
-  "/mp3/C_note.mp3","/mp3/D_note.mp3","/mp3/E_note.mp3",
-  "/mp3/F_note.mp3","/mp3/G_note.mp3","/mp3/A_note.mp3","/mp3/B_note.mp3"
+  "/mp3/C_note.mp3", "/mp3/D_note.mp3", "/mp3/E_note.mp3",
+  "/mp3/F_note.mp3", "/mp3/G_note.mp3", "/mp3/A_note.mp3", "/mp3/B_note.mp3"
 ];
 
-const buttons = positions.map(([x, y], idx) => {
+const keyboard = document.getElementById("keyboard");
+
+const buttons = labels.map((label, idx) => {
   const btn = document.createElement("button");
-  btn.className = "favorite styled";
-  btn.style.transform = "scale(2.5)";
-  btn.textContent = labels[idx];
-  btn.style.position = "absolute";
-  btn.style.left = `${x}px`;
-  btn.style.top = `${y}px`;
+  btn.className = "piano-key";
+  btn.textContent = label;
   btn.dataset.idx = String(coordinates[idx]);
-  document.body.appendChild(btn);
+  keyboard.appendChild(btn);
   return btn;
 });
 
@@ -93,7 +95,13 @@ buttons.forEach((btn) => {
     if (btnValue === expectedValue) {
       const sound = new Audio(sounds[baseIndex]);
       sound.currentTime = 0;
-      sound.play().catch(console.error);
+      sound.play().catch(() => {});
+
+      btn.classList.add("correct");
+      setTimeout(() => btn.classList.remove("correct"), 350);
+
+      score++;
+      if (scoreEl) scoreEl.textContent = score;
 
       i++;
       if (i >= random_arr.length) {
@@ -103,6 +111,9 @@ buttons.forEach((btn) => {
       } else {
         drawCircles(i);
       }
+    } else {
+      btn.classList.add("wrong");
+      setTimeout(() => btn.classList.remove("wrong"), 350);
     }
   });
 });
