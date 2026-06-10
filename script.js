@@ -82,6 +82,13 @@ const buttons = labels.map((label, idx) => {
   return btn;
 });
 
+// Answer with physical keys C, D, E, F, G, A, B
+document.addEventListener("keydown", (e) => {
+  if (e.repeat) return;
+  const idx = labels.indexOf(e.key.toUpperCase());
+  if (idx !== -1) buttons[idx].click();
+});
+
 buttons.forEach((btn) => {
   btn.addEventListener("click", () => {
     const btnValue = Number(btn.dataset.idx);

@@ -186,6 +186,19 @@ main {
   75% { transform: translateX(5px); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .piano-key,
+  .piano-key:hover,
+  .piano-key.correct {
+    transform: none;
+    transition: none;
+  }
+
+  .piano-key.wrong {
+    animation: none;
+  }
+}
+
 @media (max-width: 600px) {
   header {
     padding: 0 1.25rem;
