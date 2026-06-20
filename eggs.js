@@ -30,23 +30,43 @@
     return Math.random() * (max - min) + min;
   }
 
-  var eggs = [];
-  var N = 6;
+  function dist(a, b) {
+    return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+  }
 
-  function spawnEgg() {
+  var eggs = [];
+  var N = 7;
+  var MIN_DIST = 80;
+
+  function pickPosition(placed) {
+    var margin = 20;
+    var maxTries = 60;
+    for (var t = 0; t < maxTries; t++) {
+      var x = rand(margin, W - margin - 40);
+      var y = rand(margin, H - margin - 50);
+      var ok = true;
+      for (var k = 0; k < placed.length; k++) {
+        if (dist({ x: x, y: y }, placed[k]) < MIN_DIST) { ok = false; break; }
+      }
+      if (ok) return { x: x, y: y };
+    }
+    return { x: rand(margin, W - margin - 40), y: rand(margin, H - margin - 50) };
+  }
+
+  function spawnEgg(placed) {
+    var pos = pickPosition(placed);
+    placed.push(pos);
+
     var el = document.createElement('div');
     el.className = 'egg';
     el.innerHTML = eggSVG;
-    var margin = 30;
-    var x = rand(margin, Math.max(margin + 1, W - margin - 40));
-    var y = rand(margin, Math.max(margin + 1, H - margin - 70));
-    el.style.left = x + 'px';
-    el.style.top = y + 'px';
-    el.dataset.baseX = x;
-    el.dataset.baseY = y;
+    el.style.left = pos.x + 'px';
+    el.style.top = pos.y + 'px';
+    el.dataset.baseX = pos.x;
+    el.dataset.baseY = pos.y;
     el.dataset.phase = rand(0, Math.PI * 2);
-    el.dataset.speed = rand(0.4, 0.9);
-    el.dataset.amp = rand(6, 14);
+    el.dataset.speed = rand(0.3, 0.7);
+    el.dataset.amp = rand(8, 16);
     el.addEventListener('click', function () {
       crack(el);
     });
@@ -54,11 +74,12 @@
     eggs.push(el);
   }
 
-  for (var i = 0; i < N; i++) spawnEgg();
+  var placed = [];
+  for (var i = 0; i < N; i++) spawnEgg(placed);
 
   var t = 0;
   function animate() {
-    t += 0.02;
+    t += 0.016;
     for (var i = 0; i < eggs.length; i++) {
       var e = eggs[i];
       if (e.dataset.gone === '1') continue;
@@ -68,7 +89,7 @@
       var baseX = parseFloat(e.dataset.baseX);
       var baseY = parseFloat(e.dataset.baseY);
       var dy = Math.sin(t * speed + phase) * amp;
-      var dx = Math.cos(t * speed * 0.7 + phase) * (amp * 0.4);
+      var dx = Math.cos(t * speed * 0.6 + phase) * (amp * 0.35);
       e.style.left = baseX + dx + 'px';
       e.style.top = baseY + dy + 'px';
     }
@@ -133,7 +154,8 @@
       var idx = eggs.indexOf(el);
       if (idx >= 0) eggs.splice(idx, 1);
       if (eggs.length === 0) {
-        for (var k = 0; k < N; k++) spawnEgg();
+        placed = [];
+        for (var k = 0; k < N; k++) spawnEgg(placed);
       }
     }, 200);
   }
