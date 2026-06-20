@@ -58,12 +58,18 @@ function drawCircles(skipCount = 0) {
   }
 }
 
-image.addEventListener("load", () => {
+function initCanvas() {
   canvas.width = image.width;
   canvas.height = image.height;
   generateRandomPositions();
   drawCircles(0);
-});
+}
+
+if (image.complete) {
+  initCanvas();
+} else {
+  image.addEventListener("load", initCanvas);
+}
 
 const labels = ["C", "D", "E", "F", "G", "A", "B"];
 const sounds = [
