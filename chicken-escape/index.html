@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chicken Escape 🐔</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #070b16; font-family: 'Segoe UI', Arial, sans-serif; }
+  #game { display: block; width: 100%; height: 100%; }
+
+  .hud { position: absolute; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.8); user-select: none; pointer-events: none; }
+  #coinHud { top: 18px; left: 22px; font-size: 26px; font-weight: 700; }
+  #timerHud { top: 18px; right: 22px; font-size: 22px; font-weight: 600; opacity: .85; }
+  #hintHud {
+    bottom: 26px; left: 50%; transform: translateX(-50%);
+    font-size: 20px; font-weight: 700; color: #ffd54a;
+    background: rgba(0,0,0,.45); padding: 8px 20px; border-radius: 12px;
+    display: none; animation: pulse 1s infinite alternate;
+  }
+  @keyframes pulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.06); } }
+  #toast {
+    top: 90px; left: 50%; transform: translateX(-50%);
+    font-size: 24px; font-weight: 700; color: #7CFC7C;
+    background: rgba(0,0,0,.5); padding: 8px 22px; border-radius: 12px;
+    opacity: 0; transition: opacity .4s;
+  }
+
+  .overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    background: rgba(4, 6, 16, .82); color: #fff; z-index: 10;
+  }
+  .overlay h1 { font-size: 52px; margin-bottom: 18px; text-shadow: 0 3px 8px rgba(0,0,0,.9); }
+  .overlay p { font-size: 19px; line-height: 1.7; max-width: 640px; opacity: .92; }
+  .overlay .go { margin-top: 30px; font-size: 24px; font-weight: 700; color: #ffd54a; animation: blink 1.1s infinite alternate; }
+  @keyframes blink { from { opacity: .5; } to { opacity: 1; } }
+  .hidden { display: none !important; }
+  .key { display: inline-block; background: #2a3350; border: 1px solid #4a5680; border-radius: 6px; padding: 1px 9px; font-weight: 700; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="coinHud" class="hud">🪙 0 / 12</div>
+<div id="timerHud" class="hud">⏱ 0:00</div>
+<div id="hintHud" class="hud">Press SPACE to wake the hens! 🐔💢</div>
+<div id="toast" class="hud"></div>
+
+<div id="startScreen" class="overlay">
+  <h1>🐔 Chicken Escape 🌙</h1>
+  <p>
+    Deep night — the perfect time to escape the coop!<br><br>
+    Move with <span class="key">W A S D</span> or the <span class="key">arrow keys</span>.<br>
+    <b>Three farmers</b> patrol the maze — stay out of their flashlight beams,<br>
+    or they will chase you down!<br>
+    Collect <b>12 coins 🪙</b> and press <span class="key">SPACE</span> to wake the sleeping hens:<br>
+    they will swarm the farmers and stun them for a few seconds.<br><br>
+    It's pitch dark: you can only see a few steps ahead.<br>
+    Find the glowing <b style="color:#7CFC7C">EXIT</b> in the far north-east corner. Good luck! 🍀
+  </p>
+  <div class="go">Press ENTER to start</div>
+</div>
+
+<div id="gameOverScreen" class="overlay hidden">
+  <h1>😱 A farmer caught you!</h1>
+  <p>He carries you back to the coop… but a brave hen never gives up.</p>
+  <div class="go">Press ENTER to try again</div>
+</div>
+
+<div id="winScreen" class="overlay hidden">
+  <h1>🎉 Freedom! 🐔💨</h1>
+  <p id="winText">You escaped the coop!</p>
+  <div class="go">Press ENTER to play again</div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ============================== MAZE ============================== */
+// 23x23 grid, '#' = wall, '.' = floor. Exit: opening at row 0, col 21.
+const MAZE = [
+  '#####################.#',
+  '#.............#.......#',
+  '#.#######.#.#.#.#####.#',
+  '#...#.....#...#.......#',
+  '###.#.#.###.###.#.#.#.#',
+  '#.....#.....#.#.#.#.#.#',
+  '#####.###.###.#.#.#.###',
+  '#...#...#...#.....#...#',
+  '#.#.###.###.#.#.#####.#',
+  '#.#.......#.#...#.....#',
+  '#.###.###.#.###.#.###.#',
+  '#.....#.......#.....#.#',
+  '#.###.#.###.#.###.#.###',
+  '#.#...#.....#...#.#...#',
+  '#.#.###.###.###.#.###.#',
+  '#.#.........#...#...#.#',
+  '#.#######.###.#######.#',
+  '#.#.......#.#.......#.#',
+  '###.#####.#.###.#.#.#.#',
+  '#...#.#.......#...#...#',
+  '#.###.#.###.#########.#',
+  '#.#.......#...........#',
+  '#######################',
+];
+const G = 23;                    // grid size
+const CELL = 3.4;                // world units per cell
+const HALF = (G - 1) / 2;        // 11
+const WALL_H = 3;
+
+const START_CELL = { r: 21, c: 1 };
+const EXIT_CELL = { r: 0, c: 21 };
+const FARMER_STARTS = [{ r: 1, c: 15 }, { r: 11, c: 11 }, { r: 19, c: 17 }];
+const HELPER_HOMES = [{ r: 11, c: 3 }, { r: 11, c: 5 }, { r: 13, c: 3 }, { r: 13, c: 5 }];
+
+const COINS_NEEDED = 12;
+const COINS_TOTAL = 30;
+const PLAYER_SPEED = 8.2;
+const FARMER_PATROL_SPEEDS = [3.8, 4.2, 4.6];
+const FARMER_CHASE_SPEED = 7.1;
+const VISION_RANGE = 12;
+const VISION_RANGE_CHASE = 15;
+const VISION_HALF_ANGLE = THREE.MathUtils.degToRad(38);
+const CATCH_DIST = 1.55;
+const STUN_TIME = 6;
+const LOSE_SIGHT_TIME = 3.2;
+
+function isWall(r, c) {
+  if (r < 0) return false;                       // open field beyond the exit
+  if (r >= G || c < 0 || c >= G) return true;
+  return MAZE[r][c] === '#';
+}
+function cellOf(x, z) {
+  return { r: Math.round(z / CELL) + HALF, c: Math.round(x / CELL) + HALF };
+}
+function centerOf(r, c) {
+  return { x: (c - HALF) * CELL, z: (r - HALF) * CELL };
+}
+function openNeighbors(r, c) {
+  const out = [];
+  for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+    if (!isWall(r + dr, c + dc) && r + dr >= 0) out.push({ r: r + dr, c: c + dc });
+  }
+  return out;
+}
+
+/* ---- BFS pathfinding on the grid ---- */
+function bfsPath(from, to) {
+  if (from.r === to.r && from.c === to.c) return [];
+  const prev = new Map();
+  const key = (r, c) => r * G + c;
+  const q = [[from.r, from.c]];
+  prev.set(key(from.r, from.c), null);
+  while (q.length) {
+    const [r, c] = q.shift();
+    if (r === to.r && c === to.c) {
+      const path = [];
+      let k = key(r, c);
+      while (prev.get(k) !== null) {
+        path.push({ r: Math.floor(k / G), c: k % G });
+        k = prev.get(k);
+      }
+      return path.reverse();
+    }
+    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= G || nc < 0 || nc >= G) continue;
+      if (MAZE[nr][nc] === '#' || prev.has(key(nr, nc))) continue;
+      prev.set(key(nr, nc), key(r, c));
+      q.push([nr, nc]);
+    }
+  }
+  return [];
+}
+
+/* ---- line of sight on the grid ---- */
+function gridLOS(x1, z1, x2, z2) {
+  const dist = Math.hypot(x2 - x1, z2 - z1);
+  const steps = Math.ceil(dist / 0.4);
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const cc = cellOf(x1 + (x2 - x1) * t, z1 + (z2 - z1) * t);
+    if (isWall(cc.r, cc.c)) return false;
+  }
+  return true;
+}
+
+/* ---- circle vs wall-cell collision ---- */
+function circleHits(px, pz, rad) {
+  const c0 = Math.floor((px - rad) / CELL + HALF + 0.5);
+  const c1 = Math.floor((px + rad) / CELL + HALF + 0.5);
+  const r0 = Math.floor((pz - rad) / CELL + HALF + 0.5);
+  const r1 = Math.floor((pz + rad) / CELL + HALF + 0.5);
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+    if (!isWall(r, c)) continue;
+    const cen = centerOf(r, c);
+    const nx = Math.max(cen.x - CELL / 2, Math.min(px, cen.x + CELL / 2));
+    const nz = Math.max(cen.z - CELL / 2, Math.min(pz, cen.z + CELL / 2));
+    const dx = px - nx, dz = pz - nz;
+    if (dx * dx + dz * dz < rad * rad) return true;
+  }
+  return false;
+}
+function moveWithCollision(obj, dx, dz, rad) {
+  if (!circleHits(obj.position.x + dx, obj.position.z, rad)) obj.position.x += dx;
+  if (!circleHits(obj.position.x, obj.position.z + dz, rad)) obj.position.z += dz;
+}
+
+/* ============================== SCENE ============================== */
+const canvas = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0f22);
+scene.fog = new THREE.Fog(0x0a0f22, 12, 30);   // limited visibility!
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 300);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ---- night lights (dim: the darkness IS the challenge) ---- */
+scene.add(new THREE.AmbientLight(0x334466, 0.28));
+scene.add(new THREE.HemisphereLight(0x223355, 0x0c1220, 0.25));
+
+const moonLight = new THREE.DirectionalLight(0xaabbee, 0.35);
+moonLight.position.set(-30, 55, -20);
+moonLight.castShadow = true;
+moonLight.shadow.mapSize.set(2048, 2048);
+moonLight.shadow.camera.left = -50; moonLight.shadow.camera.right = 50;
+moonLight.shadow.camera.top = 50; moonLight.shadow.camera.bottom = -50;
+moonLight.shadow.camera.far = 160;
+scene.add(moonLight);
+
+const moon = new THREE.Mesh(
+  new THREE.SphereGeometry(4, 20, 20),
+  new THREE.MeshBasicMaterial({ color: 0xf5f3e0, fog: false })
+);
+moon.position.set(-70, 80, -90);
+scene.add(moon);
+
+// starfield
+{
+  const pts = [];
+  for (let i = 0; i < 260; i++) {
+    const a = Math.random() * Math.PI * 2, e = 0.15 + Math.random() * 0.8;
+    const R = 130;
+    pts.push(Math.cos(a) * Math.cos(e) * R, Math.sin(e) * R, Math.sin(a) * Math.cos(e) * R);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xcdd6ff, size: 0.9, fog: false })));
+}
+
+/* ---- materials ---- */
+function mat(color, opts = {}) {
+  return new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.9, ...opts });
+}
+const M = {
+  grass: mat(0x24371f),
+  dirt: mat(0x3a3226),
+  woodA: mat(0x7a5636),
+  woodB: mat(0x6b4a2e),
+  woodDark: mat(0x4a3421),
+  hay: mat(0xc9a648),
+  orange: mat(0xe8862a),
+  red: mat(0xd43b2f),
+  overalls: mat(0x3a5a9c),
+  skin: mat(0xe8b58a),
+  straw: mat(0xd8b84a),
+  leaf: mat(0x223d26),
+  coin: new THREE.MeshStandardMaterial({ color: 0xffd54a, emissive: 0xa07800, emissiveIntensity: 0.7, metalness: 0.6, roughness: 0.3, flatShading: true }),
+  exit: new THREE.MeshStandardMaterial({ color: 0x4cd964, emissive: 0x1e7a30, emissiveIntensity: 0.9, flatShading: true }),
+};
+
+/* ---- ground ---- */
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(260, 260), M.grass);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const floorIn = new THREE.Mesh(new THREE.PlaneGeometry(G * CELL, G * CELL), M.dirt);
+floorIn.rotation.x = -Math.PI / 2;
+floorIn.position.y = 0.02;
+floorIn.receiveShadow = true;
+scene.add(floorIn);
+
+/* ---- maze walls (horizontal runs merged into single boxes) ---- */
+for (let r = 0; r < G; r++) {
+  let c = 0;
+  while (c < G) {
+    if (MAZE[r][c] !== '#') { c++; continue; }
+    let e = c;
+    while (e < G && MAZE[r][e] === '#') e++;
+    const len = e - c;
+    const wall = new THREE.Mesh(
+      new THREE.BoxGeometry(len * CELL, WALL_H, CELL),
+      (r + c) % 2 ? M.woodA : M.woodB
+    );
+    const cen = centerOf(r, (c + e - 1) / 2);
+    wall.position.set(cen.x, WALL_H / 2, cen.z);
+    wall.castShadow = true; wall.receiveShadow = true;
+    scene.add(wall);
+    c = e;
+  }
+}
+
+/* ---- trees outside the maze (scenery) ---- */
+for (const [x, z] of [[-48, 10], [-44, -28], [50, 6], [46, 30], [-22, 50], [16, 48], [42, -46], [-40, 44], [8, -48], [-50, -44], [52, -20], [28, 52]]) {
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 3, 7), M.woodDark);
+  trunk.position.set(x, 1.5, z);
+  const leaves = new THREE.Mesh(new THREE.ConeGeometry(3, 6, 8), M.leaf);
+  leaves.position.set(x, 6, z);
+  scene.add(trunk, leaves);
+}
+
+/* ---- lamps at maze crossings ---- */
+function addLamp(x, z) {
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 3.6, 6), M.woodDark);
+  pole.position.set(x + 1.1, 1.8, z + 1.1);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffca66 }));
+  bulb.position.set(x + 1.1, 3.7, z + 1.1);
+  const light = new THREE.PointLight(0xffb050, 9, 12, 1.8);
+  light.position.set(x + 1.1, 3.4, z + 1.1);
+  scene.add(pole, bulb, light);
+}
+{
+  let lampCount = 0;
+  for (let r = 1; r < G - 1 && lampCount < 6; r += 2) {
+    for (let c = 1; c < G - 1 && lampCount < 6; c += 2) {
+      if (MAZE[r][c] !== '.') continue;
+      if (openNeighbors(r, c).length === 4) {
+        const p = centerOf(r, c);
+        addLamp(p.x, p.z);
+        lampCount++;
+      }
+    }
+  }
+}
+
+/* ---- exit arch ---- */
+{
+  const p = centerOf(EXIT_CELL.r, EXIT_CELL.c);
+  for (const s of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 0.5), M.exit);
+    post.position.set(p.x + s * (CELL / 2 - 0.3), 2, p.z);
+    scene.add(post);
+  }
+  const top = new THREE.Mesh(new THREE.BoxGeometry(CELL, 0.5, 0.5), M.exit);
+  top.position.set(p.x, 4.2, p.z);
+  scene.add(top);
+  const exitLight = new THREE.PointLight(0x4cd964, 15, 16, 1.5);
+  exitLight.position.set(p.x, 3, p.z + 1);
+  scene.add(exitLight);
+
+  const cv = document.createElement('canvas');
+  cv.width = 512; cv.height = 128;
+  const ctx = cv.getContext('2d');
+  ctx.font = 'bold 96px Arial';
+  ctx.fillStyle = '#7CFC7C';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowColor = '#00ff00'; ctx.shadowBlur = 22;
+  ctx.fillText('EXIT', 256, 64);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, fog: false }));
+  sprite.scale.set(7, 1.75, 1);
+  sprite.position.set(p.x, 5.6, p.z);
+  scene.add(sprite);
+}
+
+/* ============================== CHARACTER BUILDERS ============================== */
+function buildChicken(bodyColor = 0xf5f0e8, scale = 1) {
+  const g = new THREE.Group();
+  const bodyMat = mat(bodyColor);
+
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), bodyMat);
+  body.scale.set(1, 0.95, 1.25);
+  body.position.y = 0.62;
+  body.castShadow = true;
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), bodyMat);
+  head.position.set(0, 1.25, 0.5);
+  head.castShadow = true;
+
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 5), M.orange);
+  beak.rotation.x = Math.PI / 2;
+  beak.position.set(0, 1.25, 0.86);
+
+  const comb = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.28, 0.34), M.red);
+  comb.position.set(0, 1.58, 0.48);
+
+  const wattle = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), M.red);
+  wattle.position.set(0, 1.05, 0.72);
+
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  for (const s of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 5, 5), eyeMat);
+    eye.position.set(0.18 * s, 1.33, 0.7);
+    g.add(eye);
+  }
+
+  const wingL = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 5), bodyMat);
+  wingL.scale.set(0.35, 0.7, 1); wingL.position.set(-0.55, 0.68, 0); wingL.castShadow = true;
+  const wingR = wingL.clone(); wingR.position.x = 0.55;
+
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 5), bodyMat);
+  tail.scale.set(0.7, 1, 0.5); tail.position.set(0, 0.85, -0.65); tail.castShadow = true;
+
+  const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.4, 5), M.orange);
+  legL.position.set(-0.18, 0.2, 0);
+  const legR = legL.clone(); legR.position.x = 0.18;
+
+  g.add(body, head, beak, comb, wattle, wingL, wingR, tail, legL, legR);
+  g.scale.setScalar(scale);
+  g.userData = { legL, legR, wingL, wingR };
+  return g;
+}
+
+function buildFarmer(shirtColor) {
+  const g = new THREE.Group();
+  const shirtMat = mat(shirtColor);
+
+  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.1, 0.35), M.overalls);
+  legL.position.set(-0.25, 0.55, 0); legL.castShadow = true;
+  const legR = legL.clone(); legR.position.x = 0.25;
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.2, 0.65), M.overalls);
+  body.position.y = 1.7; body.castShadow = true;
+
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1, 0.28), shirtMat);
+  armL.position.set(-0.72, 1.75, 0); armL.castShadow = true;
+  const armR = armL.clone(); armR.position.x = 0.72;
+  armR.rotation.x = -Math.PI / 3;
+  armR.position.z = 0.25;
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 7), M.skin);
+  head.position.y = 2.7; head.castShadow = true;
+
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.08, 10), M.straw);
+  brim.position.y = 2.95;
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 0.35, 10), M.straw);
+  cap.position.y = 3.12;
+
+  const torch = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.5, 7), mat(0x333333));
+  torch.rotation.x = Math.PI / 2;
+  torch.position.set(0.72, 2.1, 0.6);
+
+  g.add(legL, legR, body, armL, armR, head, brim, cap, torch);
+  g.userData = { legL, legR };
+  return g;
+}
+
+/* ============================== PLAYER ============================== */
+const player = buildChicken(0xf5f0e8, 1);
+scene.add(player);
+
+// small lantern glow around the player: your only light in the dark
+const playerLight = new THREE.PointLight(0xffd9a0, 9, 13, 1.8);
+playerLight.position.set(0, 3, 0);
+player.add(playerLight);
+
+/* ============================== FARMERS ============================== */
+const alertTexture = (() => {
+  const cv = document.createElement('canvas');
+  cv.width = 64; cv.height = 64;
+  const ctx = cv.getContext('2d');
+  ctx.font = 'bold 56px Arial'; ctx.fillStyle = '#ff4040';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('!', 32, 34);
+  return new THREE.CanvasTexture(cv);
+})();
+
+const coneGeom = new THREE.CircleGeometry(1, 26, Math.PI / 2 - VISION_HALF_ANGLE, VISION_HALF_ANGLE * 2);
+coneGeom.rotateX(Math.PI / 2);
+
+const SHIRT_COLORS = [0xb03030, 0x2f7a3a, 0x7a3a8a];
+
+const farmers = FARMER_STARTS.map((cell, i) => {
+  const group = buildFarmer(SHIRT_COLORS[i]);
+  const p = centerOf(cell.r, cell.c);
+  group.position.set(p.x, 0, p.z);
+  scene.add(group);
+
+  const coneMat = new THREE.MeshBasicMaterial({ color: 0xffdd55, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false });
+  const cone = new THREE.Mesh(coneGeom, coneMat);
+  cone.position.y = 0.06;
+  group.add(cone);
+
+  const flash = new THREE.SpotLight(0xfff2c0, 20, VISION_RANGE + 3, VISION_HALF_ANGLE, 0.4, 1.4);
+  flash.position.set(0, 2.1, 0.6);
+  const flashTarget = new THREE.Object3D();
+  flashTarget.position.set(0, 0.4, 10);
+  group.add(flash, flashTarget);
+  flash.target = flashTarget;
+
+  const alert = new THREE.Sprite(new THREE.SpriteMaterial({ map: alertTexture, transparent: true, fog: false }));
+  alert.scale.set(1.2, 1.2, 1);
+  alert.position.y = 4.2;
+  alert.visible = false;
+  group.add(alert);
+
+  const stars = new THREE.Group();
+  for (let k = 0; k < 3; k++) {
+    const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.18), new THREE.MeshBasicMaterial({ color: 0xffe14a }));
+    star.userData.phase = (k / 3) * Math.PI * 2;
+    stars.add(star);
+  }
+  stars.position.y = 3.7;
+  stars.visible = false;
+  group.add(stars);
+
+  return {
+    group, coneMat, cone, flash, flashTarget, alert, stars,
+    home: cell,
+    state: 'patrol',            // patrol | chase | stunned
+    target: { ...cell },        // current cell we're walking to (patrol)
+    path: [],                   // BFS path (chase)
+    repathT: 0,
+    loseT: 0,
+    stunT: 0,
+    heading: 0,
+    patrolSpeed: FARMER_PATROL_SPEEDS[i],
+    lastPos: new THREE.Vector3(p.x, 0, p.z),
+    stuckT: 0,
+  };
+});
+
+function farmerSees(f) {
+  if (f.state === 'stunned') return false;
+  const range = f.state === 'chase' ? VISION_RANGE_CHASE : VISION_RANGE;
+  const dx = player.position.x - f.group.position.x;
+  const dz = player.position.z - f.group.position.z;
+  const dist = Math.hypot(dx, dz);
+  if (dist > range) return false;
+  const angleTo = Math.atan2(dx, dz);
+  let diff = angleTo - f.heading;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  if (Math.abs(diff) > VISION_HALF_ANGLE + 0.08) return false;
+  return gridLOS(f.group.position.x, f.group.position.z, player.position.x, player.position.z);
+}
+
+function nearestOpenCell(f) {
+  const cc = cellOf(f.group.position.x, f.group.position.z);
+  if (!isWall(cc.r, cc.c)) return cc;
+  return openNeighbors(cc.r, cc.c)[0] || { ...f.home };
+}
+
+function pickNextPatrolCell(f) {
+  const cc = cellOf(f.group.position.x, f.group.position.z);
+  const nbs = openNeighbors(cc.r, cc.c).filter(n => n.r >= 0 && n.r < G);
+  if (!nbs.length) return { ...cc };
+  // prefer continuing in the current direction
+  const fw = { r: cc.r + Math.round(Math.cos(f.heading)), c: cc.c + Math.round(Math.sin(f.heading)) };
+  const straight = nbs.find(n => n.r === fw.r && n.c === fw.c);
+  if (straight && Math.random() < 0.65) return straight;
+  // avoid going backwards unless it's a dead end
+  const back = { r: cc.r - Math.round(Math.cos(f.heading)), c: cc.c - Math.round(Math.sin(f.heading)) };
+  const options = nbs.filter(n => !(n.r === back.r && n.c === back.c));
+  const pool = options.length ? options : nbs;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/* ============================== HELPER HENS ============================== */
+const helpers = HELPER_HOMES.map((cell, i) => {
+  const c = buildChicken(0xb08050, 0.8);
+  const p = centerOf(cell.r, cell.c);
+  c.position.set(p.x, 0, p.z);
+  c.scale.y = 0.55 * 0.8;
+  c.rotation.y = (i * 1.7) % (Math.PI * 2);
+  scene.add(c);
+  // straw nest
+  const nest = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.1, 0.25, 9), M.hay);
+  nest.position.set(p.x, 0.12, p.z);
+  nest.receiveShadow = true;
+  scene.add(nest);
+  return {
+    mesh: c, home: cell, homePos: new THREE.Vector3(p.x, 0, p.z),
+    state: 'sleep',            // sleep | run | attack | return
+    farmer: farmers[i % farmers.length],
+    path: [], repathT: 0,
+  };
+});
+
+/* ============================== COINS ============================== */
+const RESERVED = new Set();
+for (const s of [START_CELL, EXIT_CELL, { r: 1, c: 21 }, ...FARMER_STARTS, ...HELPER_HOMES]) {
+  RESERVED.add(s.r + ',' + s.c);
+}
+
+const coinCells = [];
+// 1) every dead end gets a coin
+for (let r = 1; r < G - 1; r++) for (let c = 1; c < G - 1; c++) {
+  if (MAZE[r][c] !== '.' || RESERVED.has(r + ',' + c)) continue;
+  if (openNeighbors(r, c).length === 1) coinCells.push({ r, c });
+}
+// 2) fill up to COINS_TOTAL with well-spread corridor cells (deterministic)
+{
+  const cand = [];
+  for (let r = 1; r < G - 1; r += 2) for (let c = 1; c < G - 1; c += 2) {
+    if (MAZE[r][c] !== '.' || RESERVED.has(r + ',' + c)) continue;
+    if (coinCells.some(k => k.r === r && k.c === c)) continue;
+    cand.push({ r, c });
+  }
+  cand.sort((a, b) => ((a.r * 31 + a.c * 17) % 97) - ((b.r * 31 + b.c * 17) % 97));
+  for (const cc of cand) {
+    if (coinCells.length >= COINS_TOTAL) break;
+    if (coinCells.some(k => Math.abs(k.r - cc.r) + Math.abs(k.c - cc.c) < 3)) continue;
+    coinCells.push(cc);
+  }
+  for (const cc of cand) {   // relax spacing if still short
+    if (coinCells.length >= COINS_TOTAL) break;
+    if (coinCells.some(k => k.r === cc.r && k.c === cc.c)) continue;
+    coinCells.push(cc);
+  }
+}
+
+const coinGeom = new THREE.CylinderGeometry(0.45, 0.45, 0.1, 12);
+coinGeom.rotateX(Math.PI / 2);
+const coins = coinCells.map(({ r, c }) => {
+  const m = new THREE.Mesh(coinGeom, M.coin);
+  const p = centerOf(r, c);
+  m.position.set(p.x, 1, p.z);
+  m.castShadow = true;
+  scene.add(m);
+  return { mesh: m, taken: false, respawn: 0 };
+});
+
+/* ============================== AUDIO ============================== */
+let actx = null;
+function beep(freq, dur = 0.12, type = 'square', vol = 0.15, delay = 0) {
+  if (!actx) return;
+  const t = actx.currentTime + delay;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(actx.destination);
+  o.start(t); o.stop(t + dur);
+}
+const sfx = {
+  coin: () => { beep(880, 0.08, 'square', 0.12); beep(1320, 0.12, 'square', 0.12, 0.07); },
+  alert: () => { beep(620, 0.15, 'sawtooth', 0.14); beep(500, 0.2, 'sawtooth', 0.14, 0.12); },
+  wake: () => { for (let i = 0; i < 5; i++) beep(500 + i * 120, 0.1, 'square', 0.12, i * 0.06); },
+  stun: () => { beep(300, 0.3, 'triangle', 0.18); beep(220, 0.4, 'triangle', 0.18, 0.2); },
+  caught: () => { beep(200, 0.4, 'sawtooth', 0.2); beep(140, 0.6, 'sawtooth', 0.2, 0.25); },
+  win: () => { [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.25, 'square', 0.14, i * 0.15)); },
+};
+
+/* ============================== GAME STATE / UI ============================== */
+const hudCoin = document.getElementById('coinHud');
+const hudTimer = document.getElementById('timerHud');
+const hudHint = document.getElementById('hintHud');
+const toast = document.getElementById('toast');
+const screens = {
+  start: document.getElementById('startScreen'),
+  over: document.getElementById('gameOverScreen'),
+  win: document.getElementById('winScreen'),
+};
+
+let gameState = 'menu';
+let coinCount = 0;
+let elapsed = 0;
+
+function showToast(msg, ms = 2200) {
+  toast.textContent = msg;
+  toast.style.opacity = 1;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => toast.style.opacity = 0, ms);
+}
+
+function setScreen(name) {
+  for (const k in screens) screens[k].classList.add('hidden');
+  if (name) screens[name].classList.remove('hidden');
+}
+
+function resetGame() {
+  const sp = centerOf(START_CELL.r, START_CELL.c);
+  player.position.set(sp.x, 0, sp.z);
+  player.rotation.y = 0;
+  coinCount = 0; elapsed = 0;
+  for (const c of coins) { c.taken = false; c.respawn = 0; c.mesh.visible = true; }
+  farmers.forEach((f, i) => {
+    const p = centerOf(f.home.r, f.home.c);
+    f.group.position.set(p.x, 0, p.z);
+    f.state = 'patrol';
+    f.target = { ...f.home };
+    f.path = []; f.repathT = 0; f.loseT = 0; f.stunT = 0;
+    f.heading = i * 2;
+    f.alert.visible = false; f.stars.visible = false;
+    f.cone.visible = true; f.flash.visible = true;
+    f.coneMat.color.set(0xffdd55); f.coneMat.opacity = 0.15;
+    f.lastPos.copy(f.group.position); f.stuckT = 0;
+  });
+  for (const h of helpers) {
+    h.state = 'sleep';
+    h.mesh.position.copy(h.homePos);
+    h.mesh.scale.setScalar(0.8);
+    h.mesh.scale.y = 0.55 * 0.8;
+    h.path = [];
+  }
+  hudCoin.textContent = `🪙 0 / ${COINS_NEEDED}`;
+  hudHint.style.display = 'none';
+  toast.style.opacity = 0;
+}
+
+/* ============================== INPUT ============================== */
+const keys = {};
+addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Enter') {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (gameState !== 'playing') {
+      resetGame();
+      setScreen(null);
+      gameState = 'playing';
+    }
+  }
+  if (e.code === 'Space') {
+    e.preventDefault();
+    tryWakeHens();
+  }
+});
+addEventListener('keyup', e => keys[e.code] = false);
+
+function tryWakeHens() {
+  if (gameState !== 'playing' || coinCount < COINS_NEEDED) return;
+  if (farmers.every(f => f.state === 'stunned')) return;
+  coinCount -= COINS_NEEDED;
+  hudCoin.textContent = `🪙 ${coinCount} / ${COINS_NEEDED}`;
+  hudHint.style.display = 'none';
+  let toRespawn = COINS_NEEDED;
+  for (const c of coins) {
+    if (toRespawn > 0 && c.taken && c.respawn === 0) { c.respawn = 5; toRespawn--; }
+  }
+  for (const h of helpers) {
+    h.state = 'run';
+    h.path = []; h.repathT = 0;
+    h.mesh.scale.setScalar(0.8);
+  }
+  sfx.wake();
+  showToast('🐔💢 The hens are awake!');
+}
+
+/* ============================== MAIN LOOP ============================== */
+const clock = new THREE.Clock();
+
+function moveAlongPath(obj, path, speed, dt) {
+  // walks through BFS cell centers; returns the movement direction (or null)
+  while (path.length) {
+    const p = centerOf(path[0].r, path[0].c);
+    const dx = p.x - obj.position.x, dz = p.z - obj.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.25) { path.shift(); continue; }
+    const step = Math.min(speed * dt, d);
+    obj.position.x += (dx / d) * step;
+    obj.position.z += (dz / d) * step;
+    return { x: dx / d, z: dz / d };
+  }
+  return null;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  for (const c of coins) {
+    if (!c.mesh.visible) continue;
+    c.mesh.rotation.y += dt * 2.5;
+    c.mesh.position.y = 1 + Math.sin(t * 3 + c.mesh.position.x) * 0.15;
+  }
+
+  if (gameState === 'playing') {
+    elapsed += dt;
+    const min = Math.floor(elapsed / 60), sec = Math.floor(elapsed % 60);
+    hudTimer.textContent = `⏱ ${min}:${sec.toString().padStart(2, '0')}`;
+
+    /* ---- player movement ---- */
+    let mx = 0, mz = 0;
+    if (keys.KeyW || keys.ArrowUp) mz -= 1;
+    if (keys.KeyS || keys.ArrowDown) mz += 1;
+    if (keys.KeyA || keys.ArrowLeft) mx -= 1;
+    if (keys.KeyD || keys.ArrowRight) mx += 1;
+    if (mx !== 0 || mz !== 0) {
+      const len = Math.hypot(mx, mz);
+      mx /= len; mz /= len;
+      moveWithCollision(player, mx * PLAYER_SPEED * dt, mz * PLAYER_SPEED * dt, 0.55);
+      const targetRot = Math.atan2(mx, mz);
+      let d = targetRot - player.rotation.y;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      player.rotation.y += d * Math.min(1, dt * 12);
+      const u = player.userData;
+      u.legL.rotation.x = Math.sin(t * 16) * 0.7;
+      u.legR.rotation.x = -Math.sin(t * 16) * 0.7;
+      player.position.y = Math.abs(Math.sin(t * 16)) * 0.08;
+    } else {
+      player.position.y *= 0.8;
+      player.userData.legL.rotation.x *= 0.8;
+      player.userData.legR.rotation.x *= 0.8;
+    }
+    player.position.z = Math.max(player.position.z, -(HALF + 1.6) * CELL);
+
+    /* ---- coins ---- */
+    for (const c of coins) {
+      if (c.respawn > 0) {
+        c.respawn -= dt;
+        if (c.respawn <= 0) { c.respawn = 0; c.taken = false; c.mesh.visible = true; }
+        continue;
+      }
+      if (c.taken) continue;
+      const d = Math.hypot(c.mesh.position.x - player.position.x, c.mesh.position.z - player.position.z);
+      if (d < 1.2) {
+        c.taken = true; c.mesh.visible = false;
+        coinCount++;
+        hudCoin.textContent = `🪙 ${coinCount} / ${COINS_NEEDED}`;
+        sfx.coin();
+        if (coinCount >= COINS_NEEDED) hudHint.style.display = 'block';
+      }
+    }
+
+    /* ---- win ---- */
+    const pc = cellOf(player.position.x, player.position.z);
+    if (pc.r <= 0 && pc.c === EXIT_CELL.c) {
+      gameState = 'win';
+      sfx.win();
+      document.getElementById('winText').innerHTML =
+        `You escaped the coop in <b>${Math.floor(elapsed / 60)}:${Math.floor(elapsed % 60).toString().padStart(2, '0')}</b>!<br>The farmers will never see you again… 🌾`;
+      setScreen('win');
+    }
+
+    /* ---- farmers AI ---- */
+    for (const f of farmers) {
+      if (f.state === 'stunned') {
+        f.stunT -= dt;
+        f.stars.visible = true;
+        f.stars.children.forEach((s, i) => {
+          const ph = t * 4 + s.userData.phase;
+          s.position.set(Math.cos(ph) * 0.7, Math.sin(t * 6 + i) * 0.1, Math.sin(ph) * 0.7);
+          s.rotation.y += dt * 5;
+        });
+        if (f.stunT <= 0) {
+          f.state = 'patrol';
+          f.stars.visible = false;
+          f.cone.visible = true; f.flash.visible = true;
+          f.target = nearestOpenCell(f);
+          showToast('😠 A farmer is back on his feet!');
+        }
+        continue;
+      }
+
+      const seen = farmerSees(f);
+      if (seen) {
+        if (f.state !== 'chase') { sfx.alert(); showToast("⚠️ You've been spotted! Run!", 1500); }
+        f.state = 'chase';
+        f.loseT = 0;
+        f.alert.visible = true;
+        f.coneMat.color.set(0xff5040); f.coneMat.opacity = 0.24;
+      } else if (f.state === 'chase') {
+        f.loseT += dt;
+        if (f.loseT > LOSE_SIGHT_TIME) {
+          f.state = 'patrol';
+          f.alert.visible = false;
+          f.coneMat.color.set(0xffdd55); f.coneMat.opacity = 0.15;
+          f.path = [];
+          f.target = nearestOpenCell(f);
+        }
+      }
+
+      let dir = null;
+      if (f.state === 'chase') {
+        f.repathT -= dt;
+        const fc = cellOf(f.group.position.x, f.group.position.z);
+        const goal = {
+          r: THREE.MathUtils.clamp(pc.r, 0, G - 1),
+          c: THREE.MathUtils.clamp(pc.c, 0, G - 1),
+        };
+        if (f.repathT <= 0 || f.path.length === 0) {
+          f.path = bfsPath(fc, goal);
+          f.repathT = 0.35;
+        }
+        const dToPlayer = Math.hypot(player.position.x - f.group.position.x, player.position.z - f.group.position.z);
+        if (dToPlayer < 3.2 && gridLOS(f.group.position.x, f.group.position.z, player.position.x, player.position.z)) {
+          // final lunge: head straight for the chicken
+          const dx = (player.position.x - f.group.position.x) / dToPlayer;
+          const dz = (player.position.z - f.group.position.z) / dToPlayer;
+          moveWithCollision(f.group, dx * FARMER_CHASE_SPEED * dt, dz * FARMER_CHASE_SPEED * dt, 0.6);
+          dir = { x: dx, z: dz };
+        } else {
+          dir = moveAlongPath(f.group, f.path, FARMER_CHASE_SPEED, dt);
+        }
+      } else {
+        // patrol: walk to target cell center, then pick the next corridor cell
+        const p = centerOf(f.target.r, f.target.c);
+        const dx = p.x - f.group.position.x, dz = p.z - f.group.position.z;
+        const d = Math.hypot(dx, dz);
+        if (d < 0.25) {
+          f.target = pickNextPatrolCell(f);
+        } else {
+          const step = Math.min(f.patrolSpeed * dt, d);
+          f.group.position.x += (dx / d) * step;
+          f.group.position.z += (dz / d) * step;
+          dir = { x: dx / d, z: dz / d };
+        }
+      }
+
+      // safety net: never let a farmer stay stuck
+      f.stuckT += dt;
+      if (f.stuckT > 1.5) {
+        if (f.group.position.distanceTo(f.lastPos) < 0.3 && f.state !== 'stunned') {
+          f.path = [];
+          f.target = pickNextPatrolCell(f);
+          if (f.state === 'chase') f.repathT = 0;
+        }
+        f.lastPos.copy(f.group.position);
+        f.stuckT = 0;
+      }
+
+      if (dir) {
+        const desired = Math.atan2(dir.x, dir.z);
+        let dd = desired - f.heading;
+        while (dd > Math.PI) dd -= Math.PI * 2;
+        while (dd < -Math.PI) dd += Math.PI * 2;
+        f.heading += dd * Math.min(1, dt * 6);
+        const fu = f.group.userData;
+        fu.legL.rotation.x = Math.sin(t * 10) * 0.5;
+        fu.legR.rotation.x = -Math.sin(t * 10) * 0.5;
+      }
+      f.group.rotation.y = f.heading;
+
+      const range = f.state === 'chase' ? VISION_RANGE_CHASE : VISION_RANGE;
+      f.cone.scale.set(range, 1, range);
+      f.flashTarget.position.set(0, 0.4, range);
+      f.flash.distance = range + 3;
+
+      /* ---- caught! ---- */
+      const dCatch = Math.hypot(f.group.position.x - player.position.x, f.group.position.z - player.position.z);
+      if (dCatch < CATCH_DIST) {
+        gameState = 'over';
+        sfx.caught();
+        setScreen('over');
+      }
+    }
+
+    /* ---- helper hens ---- */
+    for (const h of helpers) {
+      if (h.state === 'sleep') continue;
+      const m = h.mesh;
+      if (h.state === 'run') {
+        // if their target got stunned by a sibling, keep going anyway (join the pecking)
+        const fpos = h.farmer.group.position;
+        const d = Math.hypot(fpos.x - m.position.x, fpos.z - m.position.z);
+        if (d < 1.7) {
+          h.state = 'attack';
+          if (h.farmer.state !== 'stunned') {
+            h.farmer.state = 'stunned';
+            h.farmer.stunT = STUN_TIME;
+            h.farmer.alert.visible = false;
+            h.farmer.cone.visible = false; h.farmer.flash.visible = false;
+            h.farmer.coneMat.color.set(0xffdd55); h.farmer.coneMat.opacity = 0.15;
+            h.farmer.path = [];
+            sfx.stun();
+            showToast('💫 Farmer stunned! Run!');
+          }
+        } else {
+          h.repathT -= dt;
+          if (h.repathT <= 0 || h.path.length === 0) {
+            const hc = cellOf(m.position.x, m.position.z);
+            const fc = cellOf(fpos.x, fpos.z);
+            h.path = bfsPath(hc, {
+              r: THREE.MathUtils.clamp(fc.r, 0, G - 1),
+              c: THREE.MathUtils.clamp(fc.c, 0, G - 1),
+            });
+            h.repathT = 0.6;
+          }
+          let dir = moveAlongPath(m, h.path, 9.5, dt);
+          if (!dir) {
+            // same cell as the farmer: head straight for him
+            dir = { x: (fpos.x - m.position.x) / d, z: (fpos.z - m.position.z) / d };
+            moveWithCollision(m, dir.x * 9.5 * dt, dir.z * 9.5 * dt, 0.4);
+          }
+          m.rotation.y = Math.atan2(dir.x, dir.z);
+          m.position.y = Math.abs(Math.sin(t * 18 + h.homePos.x)) * 0.25;
+          const u = m.userData;
+          u.wingL.rotation.z = Math.sin(t * 22) * 0.6;
+          u.wingR.rotation.z = -Math.sin(t * 22) * 0.6;
+        }
+      } else if (h.state === 'attack') {
+        const fpos = h.farmer.group.position;
+        const ph = t * 3 + h.homePos.x;
+        m.position.x = fpos.x + Math.cos(ph) * 1.3;
+        m.position.z = fpos.z + Math.sin(ph) * 1.3;
+        m.position.y = Math.abs(Math.sin(t * 14 + h.homePos.z)) * 0.4;
+        m.rotation.y = Math.atan2(fpos.x - m.position.x, fpos.z - m.position.z);
+        if (h.farmer.state !== 'stunned') { h.state = 'return'; h.path = []; }
+      } else if (h.state === 'return') {
+        h.repathT -= dt;
+        if (h.repathT <= 0 || h.path.length === 0) {
+          const hc = cellOf(m.position.x, m.position.z);
+          h.path = bfsPath(hc, h.home);
+          h.repathT = 1;
+        }
+        const dir = moveAlongPath(m, h.path, 8, dt);
+        if (dir) {
+          m.rotation.y = Math.atan2(dir.x, dir.z);
+          m.position.y = Math.abs(Math.sin(t * 18 + h.homePos.x)) * 0.2;
+        } else {
+          h.state = 'sleep';
+          m.position.copy(h.homePos);
+          m.scale.y = 0.55 * 0.8;
+        }
+      }
+    }
+  }
+
+  /* ---- camera: close third-person top-down (you can't see far!) ---- */
+  const desired = new THREE.Vector3(player.position.x, 15, player.position.z + 9.5);
+  camera.position.lerp(desired, Math.min(1, dt * 5));
+  camera.lookAt(player.position.x, 0, player.position.z - 1.5);
+
+  renderer.render(scene, camera);
+}
+
+resetGame();
+animate();
+</script>
+</body>
+</html>
